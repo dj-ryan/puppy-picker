@@ -91,7 +91,7 @@
 
   function render() {
     var t = computeTally(ballots);
-    var max = Math.max(1, Object.values(t).map(function (s) { return s.points; }).concat([1]));
+    var max = Math.max.apply(null, Object.values(t).map(function (s) { return s.points; }).concat([1]));
     results.innerHTML = Object.entries(t)
       .sort(function (a, b) { return b[1].points - a[1].points; })
       .map(function (e) {
