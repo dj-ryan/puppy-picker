@@ -9,5 +9,5 @@
 window.PUPPY = {
   store: "firebase",
   firebaseUrl: "https://puppy-picker-fb1a1-default-rtdb.firebaseio.com",
-  apiKey: "", // Project settings > General > Web API Key. Enables anonymous auth.
+  apiKey: "AIzaSyDyPuqy1yt-5NjyK-A0bkh53bNNEGyReg8", // Project settings > General > Web API Key. Enables anonymous auth.
 };
