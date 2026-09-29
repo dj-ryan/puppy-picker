@@ -38,8 +38,9 @@ Realtime Database (below). The page then runs entirely in the browser.
 1. Go to <https://console.firebase.google.com/> and create a project.
 2. Build > **Realtime Database** > Create database > start in **test mode**.
 3. Copy the database URL, e.g. `https://puppy-vote-default-rtdb.firebaseio.com`.
-4. Set the rules to allow the family to read/write (test mode already does this; for
-   longer use, lock reads/writes to the `votes` path).
+4. **Authentication > Sign-in method > enable `Anonymous`** — this gives every
+   visitor a stable id with no login screen, so one device = one vote.
+5. Copy your **Web API Key**: Project settings (gear) > General > Web API Key.
 
 ### 2. Point the page at it
 
@@ -49,10 +50,13 @@ Edit `config.js`:
 window.PUPPY = {
   store: "firebase",
   firebaseUrl: "https://puppy-vote-default-rtdb.firebaseio.com",
+  apiKey: "AIza...your-web-api-key",
 };
 ```
 
-### 3. Push to GitHub and enable Pages
+Votes are stored as `votes/<anonymous-uid> = { name, first, second }`, keyed by the
+anonymous id (one per device) with the typed name kept for the leaderboard. Without
+an `apiKey` the page falls back to a locally generated device id, so it still works.
 
 ```bash
 git init
@@ -64,9 +68,6 @@ git push -u origin main
 
 Then on GitHub: **Settings > Pages > Source: Deploy from a branch > `main` / `root`**.
 Your link will be `https://<you>.github.io/<repo>/`. Paste that in the group chat.
-
-> Note: one ballot per first name, honor system. Anyone with the link can vote; that's
-> fine for a family. Use a password/Firebase auth if you ever need it locked down.
 
 ## Changing the photos
 

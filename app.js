@@ -11,9 +11,38 @@
 
   var picks = { first: '', second: '' };
   var ballots = {};
-  function key() { return voter.value.trim().toLowerCase(); }
+  var UID = '';
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   voter.value = localStorage.getItem('voter') || '';
+
+  function localUid() {
+    var u = localStorage.getItem('puppy_uid');
+    if (!u) {
+      u = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'u-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('puppy_uid', u);
+    }
+    return u;
+  }
+
+  // Firebase Anonymous Auth gives every browser a stable id with no login screen.
+  // Falls back to a locally generated device id when apiKey is not configured.
+  async function ensureUid() {
+    if (UID) return UID;
+    if (cfg.apiKey) {
+      try {
+        var r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=' + encodeURIComponent(cfg.apiKey), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ returnSecureToken: true })
+        });
+        var d = await r.json();
+        if (d.localId) { UID = d.localId; localStorage.setItem('puppy_uid', UID); return UID; }
+      } catch (e) { /* fall through to a local device id */ }
+    }
+    UID = localUid();
+    return UID;
+  }
 
   function computeTally(bs) {
     var t = {};
@@ -38,18 +67,18 @@
     return JSON.parse(localStorage.getItem('puppy_ballots') || '{}');
   }
 
-  async function saveBallot(name, ballot) {
+  async function saveBallot(uid, ballot) {
     if (FB) {
-      await fetch(FB + '/votes/' + encodeURIComponent(name) + '.json', { method: 'PUT', body: JSON.stringify(ballot) });
+      await fetch(FB + '/votes/' + encodeURIComponent(uid) + '.json', { method: 'PUT', body: JSON.stringify(ballot) });
       return;
     }
     if (SERVER) {
-      var d = await (await fetch('/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, first: ballot.first, second: ballot.second }) })).json();
+      var d = await (await fetch('/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: uid, name: ballot.name, first: ballot.first, second: ballot.second }) })).json();
       if (!d.ok) throw new Error(d.error);
       return;
     }
     var b = JSON.parse(localStorage.getItem('puppy_ballots') || '{}');
-    b[name] = ballot;
+    b[uid] = ballot;
     localStorage.setItem('puppy_ballots', JSON.stringify(b));
   }
 
@@ -74,23 +103,26 @@
     var nv = Object.keys(ballots).length;
     count.textContent = nv + ' vote' + (nv === 1 ? '' : 's') + ' cast';
 
-    var rows = Object.entries(ballots).sort(function (a, b) { return a[0].localeCompare(b[0]); });
+    var rows = Object.entries(ballots).sort(function (a, b) {
+      return String(a[1].name || a[0]).localeCompare(String(b[1].name || b[0]));
+    });
     board.innerHTML = rows.length
       ? '<table><tr><th>Voter</th><th>1st choice</th><th>2nd choice</th></tr>' + rows.map(function (e) {
           var n = e[0], b = e[1];
-          return '<tr class="' + (n === key() ? 'me' : '') + '"><td>' + esc(n) + '</td><td>' + b.first + '</td><td>' + b.second + '</td></tr>';
+          return '<tr class="' + (n === UID ? 'me' : '') + '"><td>' + esc(b.name || n) + '</td><td>' + b.first + '</td><td>' + b.second + '</td></tr>';
         }).join('') + '</table>'
       : '<p id="empty">No votes yet &mdash; enter your name and tap 1st / 2nd on a puppy.</p>';
   }
 
   async function save() {
-    var name = key();
-    var existed = !!ballots[name];
+    var uid = await ensureUid();
+    var name = voter.value.trim();
+    var existed = !!ballots[uid];
     try {
-      await saveBallot(name, { first: picks.first, second: picks.second });
-      localStorage.setItem('voter', voter.value.trim());
+      await saveBallot(uid, { name: name, first: picks.first, second: picks.second });
+      localStorage.setItem('voter', name);
       msg.className = 'ok';
-      msg.textContent = (existed ? 'Updated vote for ' : 'Saved vote for ') + voter.value.trim() + '.';
+      msg.textContent = (existed ? 'Updated vote for ' : 'Saved vote for ') + name + '.';
       await refresh();
     } catch (e) {
       msg.className = 'err';
@@ -99,7 +131,7 @@
   }
 
   async function pick(puppy, rank) {
-    if (!key()) { msg.className = 'err'; msg.textContent = 'Specify your first name first.'; voter.focus(); return; }
+    if (!voter.value.trim()) { msg.className = 'err'; msg.textContent = 'Specify your first name first.'; voter.focus(); return; }
     var other = rank === 'first' ? 'second' : 'first';
     picks[rank] = picks[rank] === puppy ? '' : puppy;
     if (picks[other] === puppy) picks[other] = '';
@@ -108,8 +140,8 @@
     await save();
   }
 
-  function prefillFromBallot() {
-    var b = ballots[key()];
+  async function prefillFromBallot() {
+    var b = ballots[await ensureUid()];
     if (b) {
       picks = { first: b.first, second: b.second };
       msg.className = '';
@@ -120,6 +152,7 @@
 
   async function refresh() {
     try {
+      await ensureUid();
       ballots = await loadBallots();
       var offline = !FB && !SERVER;
       mode.style.display = offline ? 'block' : 'none';

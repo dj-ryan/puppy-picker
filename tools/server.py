@@ -62,18 +62,21 @@ class Handler(SimpleHTTPRequestHandler):
         except ValueError:
             return self._json({"error": "Bad request."}, 400)
 
-        name = (data.get("name") or "").strip().lower()
+        name = (data.get("name") or "").strip()
+        uid = (data.get("uid") or "").strip()
         first, second = data.get("first"), data.get("second")
-        if not name:
-            return self._json({"error": "Specify your first name."}, 400)
+        if not uid or len(uid) > 128:
+            return self._json({"error": "Missing voter id."}, 400)
+        if not name or len(name) > 40:
+            return self._json({"error": "Enter your first name."}, 400)
         if first not in PUPPIES or second not in PUPPIES:
             return self._json({"error": "Pick a 1st and 2nd choice."}, 400)
         if first == second:
             return self._json({"error": "1st and 2nd choice must be different."}, 400)
 
         votes = load()
-        updated = name in votes
-        votes[name] = {"first": first, "second": second}  # add or edit
+        updated = uid in votes
+        votes[uid] = {"name": name, "first": first, "second": second}  # add or edit
         save(votes)
         return self._json({"ok": True, "updated": updated, "votes": len(votes), "results": tally(votes), "ballots": votes})
 

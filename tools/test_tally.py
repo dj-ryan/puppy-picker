@@ -4,9 +4,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from server import tally
 
 votes = {
-    "alice": {"first": "nacho", "second": "neeko"},
-    "bob":   {"first": "nacho", "second": "nero"},
-    "carol": {"first": "nero",  "second": "nacho"},
+    "uid-alice": {"name": "alice", "first": "nacho", "second": "neeko"},
+    "uid-bob":   {"name": "bob",   "first": "nacho", "second": "nero"},
+    "uid-carol": {"name": "carol", "first": "nero",  "second": "nacho"},
 }
 t = tally(votes)
 assert t["nacho"] == {"first": 2, "second": 1, "points": 5}, t["nacho"]
