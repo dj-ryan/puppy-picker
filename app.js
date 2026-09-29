@@ -48,8 +48,9 @@
     var t = {};
     PUPPIES.forEach(function (p) { t[p] = { first: 0, second: 0, points: 0 }; });
     Object.values(bs).forEach(function (v) {
-      if (t[v.first]) { t[v.first].first++; t[v.first].points += 2; }
-      if (t[v.second]) { t[v.second].second++; t[v.second].points += 1; }
+      var mult = (v.name && ['david', 'audrey'].indexOf(String(v.name).trim().toLowerCase()) >= 0) ? 5 : 1;
+      if (t[v.first]) { t[v.first].first++; t[v.first].points += 2 * mult; }
+      if (t[v.second]) { t[v.second].second++; t[v.second].points += 1 * mult; }
     });
     return t;
   }

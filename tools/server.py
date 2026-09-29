@@ -26,12 +26,13 @@ def save(votes):
 def tally(votes):
     res = {p: {"first": 0, "second": 0, "points": 0} for p in PUPPIES}
     for v in votes.values():
+        mult = 5 if str(v.get("name", "")).strip().lower() in ("david", "audrey") else 1
         if v.get("first") in res:
             res[v["first"]]["first"] += 1
-            res[v["first"]]["points"] += 2
+            res[v["first"]]["points"] += 2 * mult
         if v.get("second") in res:
             res[v["second"]]["second"] += 1
-            res[v["second"]]["points"] += 1
+            res[v["second"]]["points"] += 1 * mult
     return res
 
 
