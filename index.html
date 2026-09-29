@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puppy Vote</title>
+<meta name="description" content="Pick your 1st and 2nd favorite puppy. One vote each - live results.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Puppy Vote">
+<meta property="og:description" content="Pick your 1st and 2nd favorite puppy. Live results.">
+<meta property="og:image" content="images/nero/IMG_3952.JPG">
+<meta name="theme-color" content="#2b6cb0">
+<style>
+  body { font-family: system-ui, sans-serif; background:#faf7f2; color:#2b2b2b; margin:24px; }
+  h1 { margin:0 0 8px; }
+  h2 { text-transform:capitalize; margin:0; }
+  .sub { color:#666; margin:0 0 16px; max-width:640px; }
+  section { margin-bottom:28px; }
+  .head { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+  .pickbtns { display:flex; gap:6px; }
+  .pick { padding:5px 12px; border:1px solid #2b6cb0; background:#fff; color:#2b6cb0; border-radius:20px; font-size:.85rem; font-weight:600; cursor:pointer; touch-action:manipulation; }
+  .pick.on[data-rank="first"] { background:#2b6cb0; color:#fff; }
+  .pick.on[data-rank="second"] { background:#7aa7d9; color:#fff; border-color:#7aa7d9; }
+  .strip { display:flex; gap:8px; overflow-x:auto; padding-bottom:8px; }
+  .strip img { height:200px; width:auto; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:zoom-in; touch-action:manipulation; }
+
+  #vote { position:sticky; top:0; z-index:5; background:#fff; border-radius:12px; padding:12px 16px; box-shadow:0 2px 10px rgba(0,0,0,.14); max-width:720px; margin-bottom:20px; }
+  #vote input { padding:8px; border:1px solid #ccc; border-radius:8px; font-size:1rem; }
+  #picks { font-size:.9rem; color:#444; margin:8px 0 0; }
+  #picks b { text-transform:capitalize; }
+  #msg { min-height:1.2em; margin:6px 0 0; font-weight:600; }
+  #msg.err { color:#b00020; } #msg.ok { color:#1a7f37; }
+  #mode { font-size:.8rem; color:#8a6d00; background:#fff8e1; border-radius:6px; padding:4px 8px; margin:6px 0 0; display:none; }
+
+  #summary { max-width:720px; }
+  .bar { display:flex; align-items:center; gap:10px; margin:6px 0; }
+  .bar .pname { width:74px; text-transform:capitalize; }
+  .bar .track { flex:1; height:16px; background:#eee; border-radius:8px; overflow:hidden; }
+  .bar .fill { height:100%; background:#2b6cb0; }
+  .bar .pts { width:150px; font-size:.85rem; color:#555; text-align:right; }
+  #count { color:#777; font-size:.9rem; margin:4px 0 0; }
+  #leaderboard { margin-top:22px; }
+  #leaderboard table { border-collapse:collapse; width:100%; max-width:520px; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 6px rgba(0,0,0,.1); }
+  #leaderboard th, #leaderboard td { padding:8px 12px; text-align:left; border-bottom:1px solid #eee; text-transform:capitalize; }
+  #leaderboard th { background:#f2f5f9; font-size:.8rem; letter-spacing:.03em; color:#555; text-transform:uppercase; }
+  #leaderboard tr.me td { background:#eaf3ff; font-weight:600; }
+  #leaderboard tr:last-child td { border-bottom:none; }
+  #empty { color:#888; font-size:.9rem; }
+
+  dialog#lb { border:none; padding:0; background:transparent; max-width:100vw; max-height:100vh; }
+  dialog#lb::backdrop { background:rgba(0,0,0,.9); }
+  dialog#lb img { max-width:95vw; max-height:95vh; width:auto; height:auto; object-fit:contain; border-radius:4px; cursor:zoom-out; }
+  dialog#lb .nav { position:fixed; top:50%; transform:translateY(-50%); font-size:3rem; line-height:1; background:rgba(255,255,255,.15); color:#fff; border:none; border-radius:50%; width:64px; height:64px; cursor:pointer; touch-action:manipulation; }
+  dialog#lb .nav:hover { background:rgba(255,255,255,.35); }
+  dialog#lb .prev { left:24px; }
+  dialog#lb .next { right:24px; }
+  dialog#lb .caption { position:fixed; bottom:20px; left:0; right:0; text-align:center; color:#fff; font:600 1.4rem system-ui,sans-serif; text-transform:capitalize; text-shadow:0 1px 4px rgba(0,0,0,.8); }
+  @media (max-width:600px) {
+    body { margin:12px; }
+    .strip img { height:150px; }
+    .bar .pts { width:auto; }
+    dialog#lb .nav { width:52px; height:52px; font-size:2.2rem; top:auto; bottom:64px; transform:none; }
+    dialog#lb .prev { left:12px; }
+    dialog#lb .next { right:12px; }
+  }
+</style>
+</head>
+<body>
+  <h1>Puppy Vote</h1>
+  <p class="sub">Enter your first name, then tap <b>1st</b> and <b>2nd</b> on your favorite pups. Votes save instantly and update live.</p>
+
+  <section id="vote">
+    <input id="voter" placeholder="Your first name" autocomplete="given-name">
+    <p id="picks"></p>
+    <p id="msg"></p>
+    <p id="mode"></p>
+  </section>
+
+  <section id="summary">
+    <div id="results"></div>
+    <p id="count"></p>
+    <div id="leaderboard">
+      <h2 style="font-size:1.1rem;margin:0 0 8px">Who voted for who</h2>
+      <div id="board"></div>
+    </div>
+  </section>
+    <section data-puppy="nacho">
+      <div class="head">
+        <h2>Nacho</h2>
+        <div class="pickbtns">
+          <button class="pick" data-rank="first">1st</button>
+          <button class="pick" data-rank="second">2nd</button>
+        </div>
+      </div>
+      <div class="strip">
+        <img src="images/nacho/IMG_4010.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4011.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4012.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4013.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4014.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4015.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4018 (1).JPG" alt="nacho">
+        <img src="images/nacho/IMG_4022 (1).JPG" alt="nacho">
+        <img src="images/nacho/IMG_4023.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4024.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4025.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4026.JPG" alt="nacho">
+        <img src="images/nacho/IMG_4028.JPG" alt="nacho">
+      </div>
+    </section>
+    <section data-puppy="neeko">
+      <div class="head">
+        <h2>Neeko</h2>
+        <div class="pickbtns">
+          <button class="pick" data-rank="first">1st</button>
+          <button class="pick" data-rank="second">2nd</button>
+        </div>
+      </div>
+      <div class="strip">
+        <img src="images/neeko/IMG_4030 (1).JPG" alt="neeko">
+        <img src="images/neeko/IMG_4039.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4040.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4051.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4052.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4053.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4054.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4060.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4061.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4063.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4067.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4068.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4072.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4074.JPG" alt="neeko">
+        <img src="images/neeko/IMG_4075.JPG" alt="neeko">
+      </div>
+    </section>
+    <section data-puppy="nero">
+      <div class="head">
+        <h2>Nero</h2>
+        <div class="pickbtns">
+          <button class="pick" data-rank="first">1st</button>
+          <button class="pick" data-rank="second">2nd</button>
+        </div>
+      </div>
+      <div class="strip">
+        <img src="images/nero/IMG_3952.JPG" alt="nero">
+        <img src="images/nero/IMG_3955.JPG" alt="nero">
+        <img src="images/nero/IMG_3956.JPG" alt="nero">
+        <img src="images/nero/IMG_3958.JPG" alt="nero">
+        <img src="images/nero/IMG_3960.JPG" alt="nero">
+        <img src="images/nero/IMG_3961.JPG" alt="nero">
+        <img src="images/nero/IMG_3964.JPG" alt="nero">
+        <img src="images/nero/IMG_3965.JPG" alt="nero">
+        <img src="images/nero/IMG_3967.JPG" alt="nero">
+        <img src="images/nero/IMG_3969.JPG" alt="nero">
+        <img src="images/nero/IMG_3971.JPG" alt="nero">
+        <img src="images/nero/IMG_3972.JPG" alt="nero">
+      </div>
+    </section>
+    <section data-puppy="newman">
+      <div class="head">
+        <h2>Newman</h2>
+        <div class="pickbtns">
+          <button class="pick" data-rank="first">1st</button>
+          <button class="pick" data-rank="second">2nd</button>
+        </div>
+      </div>
+      <div class="strip">
+        <img src="images/newman/IMG_3929.JPG" alt="newman">
+        <img src="images/newman/IMG_3933.JPG" alt="newman">
+        <img src="images/newman/IMG_3934.JPG" alt="newman">
+        <img src="images/newman/IMG_3939.JPG" alt="newman">
+        <img src="images/newman/IMG_3940.JPG" alt="newman">
+        <img src="images/newman/IMG_3942.JPG" alt="newman">
+        <img src="images/newman/IMG_3947.JPG" alt="newman">
+        <img src="images/newman/IMG_3948.JPG" alt="newman">
+        <img src="images/newman/IMG_3949.JPG" alt="newman">
+        <img src="images/newman/IMG_3951.JPG" alt="newman">
+      </div>
+    </section>
+    <section data-puppy="norman">
+      <div class="head">
+        <h2>Norman</h2>
+        <div class="pickbtns">
+          <button class="pick" data-rank="first">1st</button>
+          <button class="pick" data-rank="second">2nd</button>
+        </div>
+      </div>
+      <div class="strip">
+        <img src="images/norman/IMG_3974.JPG" alt="norman">
+        <img src="images/norman/IMG_3975.JPG" alt="norman">
+        <img src="images/norman/IMG_3985.JPG" alt="norman">
+        <img src="images/norman/IMG_3986.JPG" alt="norman">
+        <img src="images/norman/IMG_3987.JPG" alt="norman">
+        <img src="images/norman/IMG_3988.JPG" alt="norman">
+        <img src="images/norman/IMG_3991.JPG" alt="norman">
+        <img src="images/norman/IMG_3992.JPG" alt="norman">
+        <img src="images/norman/IMG_3995.JPG" alt="norman">
+        <img src="images/norman/IMG_3997.JPG" alt="norman">
+        <img src="images/norman/IMG_3999.JPG" alt="norman">
+        <img src="images/norman/IMG_4001.JPG" alt="norman">
+        <img src="images/norman/IMG_4002.JPG" alt="norman">
+        <img src="images/norman/IMG_4003.JPG" alt="norman">
+        <img src="images/norman/IMG_4007.JPG" alt="norman">
+        <img src="images/norman/IMG_4008.JPG" alt="norman">
+      </div>
+    </section>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

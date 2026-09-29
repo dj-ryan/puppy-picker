@@ -1,0 +1,18 @@
+"""Tiny check for the vote scoring. Run: python3 tools/test_tally.py"""
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from server import tally
+
+votes = {
+    "alice": {"first": "nacho", "second": "neeko"},
+    "bob":   {"first": "nacho", "second": "nero"},
+    "carol": {"first": "nero",  "second": "nacho"},
+}
+t = tally(votes)
+assert t["nacho"] == {"first": 2, "second": 1, "points": 5}, t["nacho"]
+assert t["neeko"] == {"first": 0, "second": 1, "points": 1}, t["neeko"]
+assert t["nero"]  == {"first": 1, "second": 1, "points": 3}, t["nero"]
+assert t["newman"] == {"first": 0, "second": 0, "points": 0}, t["newman"]
+# a ballot naming an unknown puppy must not crash or score
+assert tally({"x": {"first": "ghost", "second": "nacho"}})["nacho"]["second"] == 1
+print("tally OK")
