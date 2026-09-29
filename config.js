@@ -7,6 +7,6 @@
 //                 Fill in firebaseUrl below. See README.md.
 //   "local"    -> this browser only. No sharing (offline/demo).
 window.PUPPY = {
-  store: "server",
-  firebaseUrl: "", // e.g. "https://puppy-vote-default-rtdb.firebaseio.com"
+  store: "firebase",
+  firebaseUrl: "https://puppy-picker-fb1a1-default-rtdb.firebaseio.com",
 };
