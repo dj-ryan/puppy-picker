@@ -119,6 +119,15 @@
     var uid = await ensureUid();
     var name = voter.value.trim();
     var existed = !!ballots[uid];
+    if (!existed) {
+      // This device has no ballot yet, but the typed name already voted from a
+      // different identity (e.g. storage was cleared, or a device swap). Warn
+      // before silently adding a near-duplicate ballot.
+      var collided = Object.keys(ballots).some(function (u) {
+        return u !== uid && String(ballots[u].name || '').toLowerCase() === name.toLowerCase();
+      });
+      if (collided && !confirm('A vote for "' + name + '" already exists. This device has no vote yet, so this would ADD another one. Continue?')) return;
+    }
     try {
       await saveBallot(uid, { name: name, first: picks.first, second: picks.second });
       localStorage.setItem('voter', name);
